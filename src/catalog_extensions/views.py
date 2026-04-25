@@ -1,60 +1,91 @@
-from django.shortcuts import get_object_or_404
-from django.utils.decorators import method_decorator
-from django.views.decorators.cache import cache_page
-
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
 
-from course_discovery.apps.api.v1.models import Course
+from django.shortcuts import get_object_or_404
+
+from course_discovery.apps.course_metadata.models import Course
 from course_discovery.apps.programs.models import Program
 
-from .normalizers import normalize_course
-from .pagination import paginate
-from .programs import normalize_program
-from .transcript import get_transcript
 
-
-@method_decorator(cache_page(60 * 5), name="dispatch")
+# -----------------------------------
+# COURSE LIST
+# -----------------------------------
 class CourseListView(APIView):
+
     def get(self, request):
-        page = int(request.GET.get("page", 1))
-        page_size = int(request.GET.get("page_size", 15))
+        courses = Course.objects.all()[:10]
 
-        courses = Course.objects.filter(pacing_type="self_paced").prefetch_related("subjects")
-        normalized = [normalize_course(course, hubspot_source="catalog") for course in courses]
+        results = [
+            {
+                "key": str(c.key),
+                "title": c.title,
+            }
+            for c in courses
+        ]
 
-        return Response(paginate(normalized, page, page_size))
-
-
-@method_decorator(cache_page(60 * 5), name="dispatch")
-class ProgramListView(APIView):
-    def get(self, request):
-        page = int(request.GET.get("page", 1))
-        page_size = int(request.GET.get("page_size", 15))
-
-        programs = Program.objects.prefetch_related("courses")
-        normalized = [normalize_program(program, hubspot_source="catalog") for program in programs]
-
-        return Response(paginate(normalized, page, page_size))
+        return Response({
+            "count": len(results),
+            "results": results
+        })
 
 
-@method_decorator(cache_page(60 * 5), name="dispatch")
+# -----------------------------------
+# COURSE DETAIL
+# -----------------------------------
 class CourseDetailView(APIView):
+
     def get(self, request, course_key):
-        course = get_object_or_404(Course.objects.prefetch_related("subjects"), key=course_key)
-        return Response(normalize_course(course, hubspot_source="course_detail"))
+        course = get_object_or_404(Course, key=course_key)
+
+        return Response({
+            "key": str(course.key),
+            "title": course.title,
+        })
 
 
-@method_decorator(cache_page(60 * 5), name="dispatch")
-class ProgramDetailView(APIView):
-    def get(self, request, uuid):
-        program = get_object_or_404(Program.objects.prefetch_related("courses"), uuid=uuid)
-        return Response(normalize_program(program, hubspot_source="program_detail"))
-
-
-class TranscriptView(APIView):
-    permission_classes = [IsAuthenticated]
+# -----------------------------------
+# PROGRAM LIST
+# -----------------------------------
+class ProgramListView(APIView):
 
     def get(self, request):
-        return Response(get_transcript(request.user.id))
+        programs = Program.objects.all()[:10]
+
+        results = [
+            {
+                "uuid": str(p.uuid),
+                "title": p.title,
+            }
+            for p in programs
+        ]
+
+        return Response({
+            "count": len(results),
+            "results": results
+        })
+
+
+# -----------------------------------
+# PROGRAM DETAIL
+# -----------------------------------
+class ProgramDetailView(APIView):
+
+    def get(self, request, uuid):
+        program = get_object_or_404(Program, uuid=uuid)
+
+        return Response({
+            "uuid": str(program.uuid),
+            "title": program.title,
+        })
+
+
+# -----------------------------------
+# TRANSCRIPT
+# -----------------------------------
+class TranscriptView(APIView):
+
+    def get(self, request):
+        return Response({
+            "results": []
+        })
