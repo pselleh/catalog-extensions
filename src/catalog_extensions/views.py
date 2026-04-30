@@ -4,7 +4,7 @@ from rest_framework import status
 
 from django.shortcuts import get_object_or_404
 
-from course_discovery.apps.course_metadata.models import Course
+from course_discovery.apps.course_metadata.models import CourseRun
 from course_discovery.apps.programs.models import Program
 
 
@@ -14,7 +14,7 @@ from course_discovery.apps.programs.models import Program
 class CourseListView(APIView):
 
     def get(self, request):
-        courses = Course.objects.all()[:10]
+        courses = CourseRun.objects.all()[:10]
 
         results = [
             {
@@ -36,7 +36,7 @@ class CourseListView(APIView):
 class CourseDetailView(APIView):
 
     def get(self, request, course_key):
-        course = get_object_or_404(Course, key=course_key)
+        course = get_object_or_404(CourseRun, key=course_key)
 
         return Response({
             "key": str(course.key),
