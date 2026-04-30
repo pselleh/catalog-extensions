@@ -14,19 +14,8 @@ from course_discovery.apps.programs.models import Program
 class CourseListView(APIView):
 
     def get(self, request):
-        courses = CourseRun.objects.all()[:10]
-
-        results = [
-            {
-                "key": str(c.key),
-                "title": c.title,
-            }
-            for c in courses
-        ]
-
         return Response({
-            "count": len(results),
-            "results": results
+            "status": "ok"
         })
 
 
