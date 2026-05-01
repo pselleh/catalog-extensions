@@ -13,6 +13,6 @@ dependencies = []
 where = ["src"]
 include = [
   "catalog_extensions*",
-  "course_discovery.apps.edx_catalog_extensions*"
+  "course_discovery*"
 ]
 namespaces = true
