@@ -1,9 +1,0 @@
-README.md
-setup.py
-cba_catalog_extensions/__init__.py
-cba_catalog_extensions/apps.py
-cba_catalog_extensions/urls.py
-cba_catalog_extensions.egg-info/PKG-INFO
-cba_catalog_extensions.egg-info/SOURCES.txt
-cba_catalog_extensions.egg-info/dependency_links.txt
-cba_catalog_extensions.egg-info/top_level.txt
