@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "catalog-extensions"
 version = "0.1.0"
@@ -8,9 +12,5 @@ dependencies = [
     "requests",
 ]
 
-[tool.setuptools.packages.find]
-include = ["catalog_extensions*"]
-
-[build-system]
-requires = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.build_meta"
+[tool.setuptools]
+packages = ["catalog_extensions"]
