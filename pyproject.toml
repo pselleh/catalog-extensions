@@ -7,10 +7,15 @@ name = "catalog-extensions"
 version = "0.1.0"
 description = "Sidecar catalog API extensions for Open edX Discovery"
 requires-python = ">=3.11"
+
 dependencies = [
     "djangorestframework",
     "requests",
 ]
 
 [tool.setuptools]
-packages = ["catalog_extensions"]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["catalog_extensions*"]
