@@ -1,0 +1,17 @@
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+
+class UnifiedCatalogView(APIView):
+    """
+    Simple test endpoint for unified catalog API.
+    """
+
+    def get(self, request):
+        return Response(
+            {
+                "status": "ok",
+                "service": "catalog_extensions",
+                "message": "Unified catalog endpoint working",
+            }
+        )
