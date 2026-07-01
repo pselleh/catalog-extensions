@@ -1,7 +1,8 @@
 from django.urls import path
 
-from catalog_extensions.api.views.courses import UnifiedCatalogView
+from catalog_extensions.api.views.courses import CourseDetailView, CourseListView
 
 urlpatterns = [
-    path("", UnifiedCatalogView.as_view(), name="courses"),
+    path("", CourseListView.as_view(), name="course-list"),
+    path("<path:course_key>/", CourseDetailView.as_view(), name="course-detail"),
 ]

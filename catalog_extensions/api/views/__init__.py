@@ -1,1 +1,1 @@
-from .courses import UnifiedCatalogView
+from .courses import CourseListView, CourseDetailView
