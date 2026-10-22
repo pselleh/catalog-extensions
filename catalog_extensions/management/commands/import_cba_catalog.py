@@ -18,6 +18,11 @@ from course_discovery.apps.course_metadata.models import (
     SeatType,
 )
 
+from catalog_extensions.services.catalog_payload import (
+    decimal_price,
+    extended_metadata_defaults,
+)
+
 from catalog_extensions.models.category import CatalogCategory
 from catalog_extensions.models.course import (
     AccessScope,
@@ -143,6 +148,16 @@ class Command(BaseCommand):
         if not isinstance(payload, dict):
             return ["The top-level JSON value must be an object."]
 
+        sidecars = payload.get("sidecars", {})
+        if not isinstance(sidecars, dict):
+            return ["sidecars must be an object keyed by course key."]
+        if any(
+            not isinstance(key, str) or not isinstance(value, dict)
+            for key, value in sidecars.items()
+        ):
+            return ["Each sidecars entry must have a string key and object value."]
+        self.catalog_sidecars = sidecars
+
         people_ids = set()
         for index, person in enumerate(payload.get("people", []), start=1):
             prefix = f"people[{index}]"
@@ -173,7 +188,7 @@ class Command(BaseCommand):
             prefix = f"microcourses[{index}]"
             for field in required_course_fields:
                 if field not in course or (
-                    field != "access_policy_key" and course[field] in (None, "")
+                    field not in {"access_policy_key", "price", "duration_minutes"} and course[field] in (None, "")
                 ):
                     errors.append(f"{prefix}.{field} is required.")
             key = course.get("course_key")
@@ -214,7 +229,7 @@ class Command(BaseCommand):
             prefix = f"certificate_programs[{index}]"
             for field in required_program_fields:
                 if field not in program or (
-                    field != "access_policy_key" and program[field] in (None, "")
+                    field not in {"access_policy_key", "price", "duration_minutes"} and program[field] in (None, "")
                 ):
                     errors.append(f"{prefix}.{field} is required.")
             code = program.get("program_code")
@@ -357,15 +372,17 @@ class Command(BaseCommand):
                 errors.append(
                     f"{prefix}.standalone_enrollment_allowed must be false for program_only access."
                 )
-        if "duration_minutes" in item and (
-            not isinstance(item["duration_minutes"], int) or item["duration_minutes"] < 1
+        duration = item.get("duration_minutes")
+        if duration is not None and (
+            type(duration) is not int or duration < 1
         ):
-            errors.append(f"{prefix}.duration_minutes must be a positive integer.")
+            errors.append(
+                f"{prefix}.duration_minutes must be a positive integer or null."
+            )
         try:
-            if "price" in item and Decimal(str(item["price"])) < 0:
-                errors.append(f"{prefix}.price cannot be negative.")
-        except Exception:
-            errors.append(f"{prefix}.price must be a decimal value.")
+            self._extended_metadata_defaults(item)
+        except CommandError as exc:
+            errors.append(f"{prefix}: {exc}")
         if item.get("currency") and len(item["currency"]) != 3:
             errors.append(f"{prefix}.currency must be a three-letter code.")
         image_alt = item.get("image_alt")
@@ -482,6 +499,18 @@ class Command(BaseCommand):
             if assignment.get("role") not in VALID_ROLES:
                 errors.append(f"{item_prefix}.role must be one of {sorted(VALID_ROLES)}.")
 
+    def _extended_metadata_defaults(self, record):
+        kind = "program" if "program_code" in record else "microcourse"
+        sidecar = None
+        if kind == "microcourse":
+            sidecar = getattr(self, "catalog_sidecars", {}).get(
+                record.get("course_key")
+            )
+        try:
+            return extended_metadata_defaults(record, kind, sidecar)
+        except ValueError as exc:
+            raise CommandError(str(exc)) from exc
+
     def _import_people(self, records, partner):
         result = {}
         for record in records:
@@ -548,6 +577,7 @@ class Command(BaseCommand):
                         }),
                         "learning_outcomes": record["learning_outcomes"],
                         "references": record["references"],
+                        **self._extended_metadata_defaults(record),
                     },
                 )
             )
@@ -569,6 +599,9 @@ class Command(BaseCommand):
         return result
 
     def _upsert_seat(self, course_run, price, currency_code):
+        price = decimal_price(price)
+        if price is None:
+            return
         currency = Currency.objects.get(code=currency_code.upper())
         seat_type, _created = SeatType.objects.get_or_create(name="Professional")
         Seat.objects.update_or_create(
@@ -576,7 +609,7 @@ class Command(BaseCommand):
             type=seat_type,
             currency=currency,
             credit_provider=None,
-            defaults={"price": Decimal(str(price))},
+            defaults={"price": price},
         )
 
     def _replace_course_faculty(self, course_run, assignments, people):
@@ -637,7 +670,10 @@ class Command(BaseCommand):
             program.title = record["title"]
             program.subtitle = record.get("subtitle", "")
             program.overview = record["course_overview"]
-            program.total_hours_of_effort = max(1, (record["duration_minutes"] + 59) // 60)
+            if record["duration_minutes"] is not None:
+                program.total_hours_of_effort = max(
+                    1, (record["duration_minutes"] + 59) // 60
+                )
             if not getattr(self, "defer_images", False):
                 self._save_program_image(
                     program,
@@ -674,7 +710,7 @@ class Command(BaseCommand):
                         "access_scope": record["access_scope"],
                         "access_policy_key": record["access_policy_key"],
                         "duration_minutes": record["duration_minutes"],
-                        "price": Decimal(str(record["price"])),
+                        "price": decimal_price(record["price"]),
                         "currency": record["currency"].upper(),
                         "pacing": record["pacing"],
                         "course_overview": record["course_overview"],
@@ -685,6 +721,7 @@ class Command(BaseCommand):
                         "completion_requirements": record["completion_requirements"],
                         "learning_outcomes": record["learning_outcomes"],
                         "references": record["references"],
+                        **self._extended_metadata_defaults(record),
                     },
                 )
             )
