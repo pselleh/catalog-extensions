@@ -18,6 +18,10 @@ from course_discovery.apps.course_metadata.models import (
     SeatType,
 )
 
+from catalog_extensions.services.catalog_organizations import (
+    organization_keys,
+    resolve_organizations,
+)
 from catalog_extensions.services.catalog_payload import (
     decimal_price,
     extended_metadata_defaults,
@@ -132,6 +136,7 @@ class Command(BaseCommand):
                 payload.get("microcourses", []),
                 people,
                 category_lookup,
+                partner=partner,
             )
             self._import_programs(
                 payload.get("certificate_programs", []),
@@ -380,6 +385,10 @@ class Command(BaseCommand):
                 f"{prefix}.duration_minutes must be a positive integer or null."
             )
         try:
+            organization_keys(item)
+        except ValueError as exc:
+            errors.append(f"{prefix}: {exc}")
+        try:
             self._extended_metadata_defaults(item)
         except CommandError as exc:
             errors.append(f"{prefix}: {exc}")
@@ -537,6 +546,7 @@ class Command(BaseCommand):
         records,
         people,
         category_lookup,
+        partner=None,
     ):
         result = {}
         for record in records:
@@ -549,6 +559,13 @@ class Command(BaseCommand):
                 ) from exc
 
             course = course_run.course
+            if partner is not None and course.partner_id != partner.pk:
+                raise CommandError(
+                    f"{record['course_key']} belongs to a different Discovery partner."
+                )
+            owner, listings = resolve_organizations(
+                record, partner if partner is not None else course.partner
+            )
             course.title = record["title"]
             course.number = record["course_number"]
             course.short_description = record["short_description"]
@@ -581,6 +598,10 @@ class Command(BaseCommand):
                     },
                 )
             )
+
+            metadata.owning_organization = owner
+            metadata.save(update_fields=["owning_organization"])
+            metadata.listing_organizations.set(listings)
 
             metadata.catalog_categories.set(
                 [
@@ -636,8 +657,10 @@ class Command(BaseCommand):
     ):
         organization_cache = {}
         for record in records:
+            owner, listings = resolve_organizations(record, partner)
             metadata = CertificateProgramCatalogMetadata.objects.filter(
-                program_code=record["program_code"]
+                program_code=record["program_code"],
+                program__partner=partner,
             ).select_related("program").first()
             if metadata:
                 program = metadata.program
@@ -725,6 +748,10 @@ class Command(BaseCommand):
                     },
                 )
             )
+
+            metadata.owning_organization = owner
+            metadata.save(update_fields=["owning_organization"])
+            metadata.listing_organizations.set(listings)
 
             metadata.catalog_categories.set(
                 [

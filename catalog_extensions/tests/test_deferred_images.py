@@ -14,6 +14,12 @@ MODULE = "catalog_extensions.management.commands.import_cba_catalog"
 class DeferredImagesTests(SimpleTestCase):
     def setUp(self):
         self.command = Command()
+        resolver = patch(
+            f"{MODULE}.resolve_organizations",
+            return_value=(MagicMock(), []),
+        )
+        resolver.start()
+        self.addCleanup(resolver.stop)
         self.command.defer_images = True
         example = Path(__file__).resolve().parents[2] / "docs/api/cba_catalog_import.example.json"
         self.payload = json.loads(example.read_text())
