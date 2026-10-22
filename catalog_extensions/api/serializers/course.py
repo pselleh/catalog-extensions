@@ -238,6 +238,8 @@ class CourseListSerializer(serializers.Serializer):
     def _runs(self, obj):
         request = self.context.get("request")
         params = request.query_params if request is not None else {}
+        if self.context.get("suppress_course_filters", False):
+            params = {}
         organization = (
             get_catalog_organization(request) if request is not None else None
         )

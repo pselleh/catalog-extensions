@@ -85,8 +85,8 @@ class ProgramSerializer(serializers.Serializer):
     image_alt = serializers.SerializerMethodField()
     organizations = OrganizationSerializer(source="authoring_organizations", many=True, read_only=True)
     subjects = SubjectSerializer(many=True, read_only=True)
-    courses = CourseListSerializer(many=True, read_only=True)
-    microcourses = ProgramCourseRequirementSerializer(source="cba_course_requirements", many=True, read_only=True)
+    courses = serializers.SerializerMethodField()
+    microcourses = serializers.SerializerMethodField()
     program_faculty = ProgramFacultyAssignmentSerializer(source="cba_faculty_assignments", many=True, read_only=True)
     created = serializers.DateTimeField(read_only=True)
     modified = serializers.DateTimeField(read_only=True)
@@ -99,6 +99,34 @@ class ProgramSerializer(serializers.Serializer):
                 metadata, context=self.context
             ).data)
         return data
+
+    def _nested_context(self):
+        return {**self.context, "suppress_course_filters": True}
+
+    def get_courses(self, obj):
+        context = self._nested_context()
+        selector = CourseListSerializer(context=context)
+        courses = [
+            course for course in obj.courses.all()
+            if selector._runs(course)
+        ]
+        return CourseListSerializer(
+            courses, many=True, context=context
+        ).data
+
+    def get_microcourses(self, obj):
+        context = self._nested_context()
+        requirements = []
+        for requirement in obj.cba_course_requirements.all():
+            run = requirement.course_run
+            selector = CourseListSerializer(context={
+                **context, "course_key": str(run.key),
+            })
+            if selector._runs(run.course):
+                requirements.append(requirement)
+        return ProgramCourseRequirementSerializer(
+            requirements, many=True, context=context
+        ).data
 
     def get_program_code(self, obj):
         metadata = _metadata(obj)

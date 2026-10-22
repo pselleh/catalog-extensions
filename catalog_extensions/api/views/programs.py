@@ -1,4 +1,5 @@
 from catalog_extensions.api.query_params import get_catalog_organization
+from django.core.exceptions import ObjectDoesNotExist
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -7,6 +8,21 @@ from catalog_extensions.api.pagination import CBAPagination
 from catalog_extensions.api.permissions import HasRestrictedCatalogAccess
 from catalog_extensions.api.serializers import ProgramSerializer
 from catalog_extensions.services.program_service import ProgramService
+
+
+def _matches_listing(program, request):
+    organization = get_catalog_organization(request)
+    if not organization:
+        return True
+    try:
+        metadata = program.cba_catalog
+    except ObjectDoesNotExist:
+        return False
+    if metadata is None:
+        return False
+    return organization in {
+        item.key for item in metadata.listing_organizations.all()
+    }
 
 
 class ProgramListView(APIView):
@@ -37,6 +53,7 @@ class ProgramListView(APIView):
         serializer = ProgramSerializer(
             page,
             many=True,
+            context={"request": request, "public_only": True},
         )
 
         return paginator.get_paginated_response(
@@ -52,7 +69,7 @@ class ProgramDetailView(APIView):
 
         program = service.get_program(uuid)
 
-        if not program:
+        if not program or not _matches_listing(program, request):
             return Response(
                 {
                     "code": "PROGRAM_NOT_FOUND",
@@ -61,7 +78,9 @@ class ProgramDetailView(APIView):
                 status=404,
             )
 
-        serializer = ProgramSerializer(program)
+        serializer = ProgramSerializer(
+            program, context={"request": request, "public_only": True},
+        )
 
         return Response(serializer.data)
 
@@ -83,7 +102,10 @@ class InternalProgramListView(ProgramListView):
         queryset = ProgramService().list_programs(filters=filters, public_only=False)
         paginator = CBAPagination()
         page = paginator.paginate_queryset(queryset, request, view=self)
-        return paginator.get_paginated_response(ProgramSerializer(page, many=True).data)
+        return paginator.get_paginated_response(ProgramSerializer(
+            page, many=True,
+            context={"request": request, "public_only": False},
+        ).data)
 
 
 class InternalProgramDetailView(ProgramDetailView):
@@ -91,9 +113,11 @@ class InternalProgramDetailView(ProgramDetailView):
 
     def get(self, request, uuid):
         program = ProgramService().get_program(uuid, public_only=False)
-        if not program:
+        if not program or not _matches_listing(program, request):
             return Response(
                 {"code": "PROGRAM_NOT_FOUND", "message": "Program does not exist."},
                 status=404,
             )
-        return Response(ProgramSerializer(program).data)
+        return Response(ProgramSerializer(
+            program, context={"request": request, "public_only": False},
+        ).data)
