@@ -1,11 +1,14 @@
 from django.core.validators import MinValueValidator
 from django.db import models
 
+from catalog_extensions.models.catalog_contract import CatalogContractMetadata
+
 from course_discovery.apps.course_metadata.models import CourseRun, Person
 
 
 class CatalogStatus(models.TextChoices):
     DRAFT = "draft", "Draft"
+    PLANNED = "planned", "Planned"
     WAITLIST_OPEN = "waitlist_open", "Waitlist open"
     ENROLLMENT_OPEN = "enrollment_open", "Enrollment open"
     ENROLLMENT_CLOSED = "enrollment_closed", "Enrollment closed"
@@ -32,8 +35,30 @@ class FacultyRole(models.TextChoices):
     TECHNICAL_REVIEWER = "technical_reviewer", "Technical Reviewer"
 
 
-class MicrocourseCatalogMetadata(models.Model):
+class MicrocourseCatalogMetadata(CatalogContractMetadata):
     """CBA catalog fields that are not represented by native Discovery fields."""
+
+    record_type = models.CharField(max_length=32, default="microcourse", choices=[("microcourse", "Microcourse"), ("program_hub", "Program hub"), ("capstone", "Capstone"), ("examination", "Examination")])
+    marketing_slug = models.SlugField(max_length=255, blank=True)
+    target_audience = models.TextField(blank=True)
+    prerequisite_course_keys = models.JSONField(default=list, blank=True)
+    recommended_prerequisites = models.JSONField(default=list, blank=True)
+    level = models.CharField(max_length=64, blank=True)
+    delivery_format = models.CharField(max_length=128, blank=True)
+    language = models.CharField(max_length=32, blank=True)
+    assessment_summary = models.TextField(blank=True)
+    completion_requirements = models.TextField(blank=True)
+    takeaway = models.TextField(blank=True)
+    credential = models.TextField(blank=True)
+    enrollment_url = models.URLField(max_length=2048, null=True, blank=True)
+    waitlist_url = models.URLField(max_length=2048, null=True, blank=True)
+    syllabus_url = models.URLField(max_length=2048, null=True, blank=True)
+    price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, default=None, validators=[MinValueValidator(0)])
+    currency = models.CharField(max_length=3, default="USD")
+    parent_course = models.CharField(max_length=128, blank=True)
+    sequence_in_course = models.PositiveIntegerField(null=True, blank=True)
+    standards_alignment = models.JSONField(default=list, blank=True)
+
 
     course_run = models.OneToOneField(
         CourseRun,
@@ -52,10 +77,7 @@ class MicrocourseCatalogMetadata(models.Model):
         blank=True,
         related_name="microcourses",
     )
-    duration_minutes = models.PositiveIntegerField(
-        default=60,
-        validators=[MinValueValidator(1)],
-    )
+    duration_minutes = models.PositiveIntegerField(null=True, blank=True, default=None, validators=[MinValueValidator(1)])
     catalog_status = models.CharField(
         max_length=32,
         choices=CatalogStatus.choices,

@@ -46,7 +46,7 @@ class ProgramRepository:
             .order_by("title")
         )
 
-    def list_programs(self, filters=None, limit=100, public_only=True):
+    def list_programs(self, filters=None, limit=None, public_only=True):
         queryset = self._base_queryset()
 
         if public_only:
@@ -87,7 +87,10 @@ class ProgramRepository:
                 cba_catalog__catalog_categories__is_active=True,
             )
 
-        return queryset.distinct()[:limit]
+        queryset = queryset.distinct()
+        if limit is not None:
+            queryset = queryset[:limit]
+        return queryset
 
     def get_by_uuid(self, uuid, public_only=True):
         queryset = self._base_queryset().filter(uuid=uuid)

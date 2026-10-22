@@ -36,7 +36,7 @@ class CourseRepository:
     def list_courses(
         self,
         filters=None,
-        limit=100,
+        limit=None,
         public_only=True,
     ):
         queryset = self._base_queryset()
@@ -99,7 +99,10 @@ class CourseRepository:
                 **course_run_filters
             )
 
-        return queryset.distinct()[:limit]
+        queryset = queryset.distinct()
+        if limit is not None:
+            queryset = queryset[:limit]
+        return queryset
 
     def get_by_key(
         self,

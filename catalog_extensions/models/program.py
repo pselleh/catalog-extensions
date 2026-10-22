@@ -3,6 +3,8 @@ from decimal import Decimal
 from django.core.validators import MinValueValidator
 from django.db import models
 
+from catalog_extensions.models.catalog_contract import CatalogContractMetadata
+
 from course_discovery.apps.course_metadata.models import CourseRun, Person, Program
 
 from catalog_extensions.models.course import (
@@ -13,8 +15,29 @@ from catalog_extensions.models.course import (
 )
 
 
-class CertificateProgramCatalogMetadata(models.Model):
+class CertificateProgramCatalogMetadata(CatalogContractMetadata):
     """CBA catalog fields for a certificate program."""
+
+    duration_minutes_min = models.PositiveIntegerField(null=True, blank=True)
+    duration_minutes_max = models.PositiveIntegerField(null=True, blank=True)
+    microcourse_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, default=None, validators=[MinValueValidator(0)])
+    ksa = models.JSONField(default=dict, blank=True)
+    weeks = models.JSONField(default=list, blank=True)
+    elective_groups = models.JSONField(default=list, blank=True)
+    target_audience = models.TextField(blank=True)
+    roles_prepared_for = models.JSONField(default=list, blank=True)
+    entry_requirements = models.TextField(blank=True)
+    work_products = models.JSONField(default=list, blank=True)
+    capstone = models.JSONField(default=dict, blank=True)
+    examination = models.JSONField(default=dict, blank=True)
+    exam_blueprint = models.JSONField(default=list, blank=True)
+    certificate_term = models.TextField(blank=True)
+    award_title = models.CharField(max_length=255, blank=True)
+    standards_alignment = models.JSONField(default=list, blank=True)
+    sample_work_url = models.URLField(max_length=2048, null=True, blank=True)
+    enrollment_url = models.URLField(max_length=2048, null=True, blank=True)
+    waitlist_url = models.URLField(max_length=2048, null=True, blank=True)
+
 
     program = models.OneToOneField(
         Program,
@@ -63,16 +86,8 @@ class CertificateProgramCatalogMetadata(models.Model):
         db_index=True,
         help_text="Stable Wagtail policy identifier; never store an organization code here.",
     )
-    duration_minutes = models.PositiveIntegerField(
-        default=60,
-        validators=[MinValueValidator(1)],
-    )
-    price = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        default=Decimal("0.00"),
-        validators=[MinValueValidator(Decimal("0.00"))],
-    )
+    duration_minutes = models.PositiveIntegerField(null=True, blank=True, default=None, validators=[MinValueValidator(1)])
+    price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, default=None, validators=[MinValueValidator(0)])
     currency = models.CharField(max_length=3, default="USD")
     pacing = models.CharField(max_length=32, default="self_paced")
     course_overview = models.TextField(blank=True)

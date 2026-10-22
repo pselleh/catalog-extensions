@@ -1,3 +1,4 @@
+from catalog_extensions.api.query_params import get_catalog_organization
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -16,7 +17,7 @@ class CourseListView(APIView):
 
     def get(self, request):
         filters = {
-            "organization": request.query_params.get("organization"),
+            "organization": get_catalog_organization(request),
             "subject": request.query_params.get("subject"),
             "title": request.query_params.get("title"),
             "uuid": request.query_params.get("uuid"),
@@ -75,7 +76,7 @@ class InternalCourseListView(CourseListView):
 
     def get(self, request):
         filters = {
-            "organization": request.query_params.get("organization"),
+            "organization": get_catalog_organization(request),
             "subject": request.query_params.get("subject"),
             "title": request.query_params.get("title"),
             "uuid": request.query_params.get("uuid"),
