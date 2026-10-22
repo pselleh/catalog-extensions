@@ -2,6 +2,9 @@ from django.core.exceptions import ObjectDoesNotExist
 from opaque_keys.edx.keys import CourseKey
 from rest_framework import serializers
 
+from catalog_extensions.api.serializers.catalog_display import (
+    CourseDisplayMetadataSerializer,
+)
 from catalog_extensions.api.query_params import get_catalog_organization
 from catalog_extensions.api.serializers.organization import OrganizationSerializer
 from catalog_extensions.api.serializers.subject import SubjectSerializer
@@ -119,6 +122,15 @@ class CourseRunSerializer(serializers.Serializer):
     references = serializers.SerializerMethodField()
     faculty = FacultyAssignmentSerializer(source="cba_faculty_assignments", many=True, read_only=True)
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        metadata = _catalog_metadata(instance)
+        if metadata is not None:
+            data.update(CourseDisplayMetadataSerializer(
+                metadata, context=self.context
+            ).data)
+        return data
+
     def get_organization(self, obj):
         return _parse_course_key(obj.key)[0]
 
@@ -213,6 +225,15 @@ class CourseListSerializer(serializers.Serializer):
     marketing_url = serializers.CharField(read_only=True)
     organizations = OrganizationSerializer(source="authoring_organizations", many=True, read_only=True)
     subjects = SubjectSerializer(many=True, read_only=True)
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        metadata = _catalog_metadata(self._run(instance))
+        if metadata is not None:
+            data.update(CourseDisplayMetadataSerializer(
+                metadata, context=self.context
+            ).data)
+        return data
 
     def _runs(self, obj):
         request = self.context.get("request")

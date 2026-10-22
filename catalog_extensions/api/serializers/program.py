@@ -1,6 +1,9 @@
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import serializers
 
+from catalog_extensions.api.serializers.catalog_display import (
+    ProgramDisplayMetadataSerializer,
+)
 from catalog_extensions.api.serializers.course import (
     CourseListSerializer,
     CourseRunSerializer,
@@ -88,6 +91,15 @@ class ProgramSerializer(serializers.Serializer):
     created = serializers.DateTimeField(read_only=True)
     modified = serializers.DateTimeField(read_only=True)
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        metadata = _metadata(instance)
+        if metadata is not None:
+            data.update(ProgramDisplayMetadataSerializer(
+                metadata, context=self.context
+            ).data)
+        return data
+
     def get_program_code(self, obj):
         metadata = _metadata(obj)
         return metadata.program_code if metadata else ""
@@ -152,7 +164,11 @@ class ProgramSerializer(serializers.Serializer):
 
     def get_price(self, obj):
         metadata = _metadata(obj)
-        return str(metadata.price) if metadata else None
+        return (
+            str(metadata.price)
+            if metadata is not None and metadata.price is not None
+            else None
+        )
 
     def get_currency(self, obj):
         metadata = _metadata(obj)
