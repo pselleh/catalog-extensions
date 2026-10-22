@@ -10,17 +10,19 @@ from catalog_extensions.api.serializers import ProgramSerializer
 from catalog_extensions.services.program_service import ProgramService
 
 
-def _matches_listing(program, request):
+def _matches_listing(program, request, public_only=True):
     organization = get_catalog_organization(request)
     site = (request.query_params.get("site") or "").strip()
-    if not organization and not site:
-        return True
     try:
         metadata = program.cba_catalog
     except ObjectDoesNotExist:
         return False
     if metadata is None:
         return False
+    if public_only and getattr(metadata, "publication_ready", False) is not True:
+        return False
+    if not organization and not site:
+        return True
     if site and site not in (getattr(metadata, "site_keys", None) or []):
         return False
     if organization:
@@ -120,7 +122,7 @@ class InternalProgramDetailView(ProgramDetailView):
 
     def get(self, request, uuid):
         program = ProgramService().get_program(uuid, public_only=False)
-        if not program or not _matches_listing(program, request):
+        if not program or not _matches_listing(program, request, public_only=False):
             return Response(
                 {"code": "PROGRAM_NOT_FOUND", "message": "Program does not exist."},
                 status=404,

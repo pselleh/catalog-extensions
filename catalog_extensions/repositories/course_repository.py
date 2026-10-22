@@ -74,6 +74,9 @@ class CourseRepository:
 
         if public_only:
             course_run_filters[
+                "course_runs__cba_catalog__publication_ready"
+            ] = True
+            course_run_filters[
                 "course_runs__cba_catalog__catalog_visibility"
             ] = "public"
 
@@ -121,6 +124,9 @@ class CourseRepository:
 
             if public_only:
                 course_run_filters[
+                    "course_runs__cba_catalog__publication_ready"
+                ] = True
+                course_run_filters[
                     (
                         "course_runs__cba_catalog__"
                         "catalog_visibility"
@@ -140,7 +146,8 @@ class CourseRepository:
             queryset = queryset.filter(
                 course_runs__cba_catalog__catalog_visibility=(
                     "public"
-                )
+                ),
+                course_runs__cba_catalog__publication_ready=True,
             )
 
         return queryset.distinct().first()

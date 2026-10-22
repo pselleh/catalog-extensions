@@ -260,7 +260,10 @@ class CourseListSerializer(serializers.Serializer):
                 continue
             if site and site not in (getattr(metadata, "site_keys", None) or []):
                 continue
-            if public_only and metadata.catalog_visibility != "public":
+            if public_only and (
+                metadata.catalog_visibility != "public"
+                or getattr(metadata, "publication_ready", False) is not True
+            ):
                 continue
             if organization:
                 listings = getattr(metadata, "listing_organizations", None)

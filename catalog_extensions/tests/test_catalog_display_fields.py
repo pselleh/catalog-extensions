@@ -35,7 +35,7 @@ class CatalogDisplayFieldTests(SimpleTestCase):
         )
         metadata.target_audience = "Risk practitioners"
         metadata.record_type = "microcourse"
-        metadata.publication_ready = False
+        metadata.publication_ready = True
         metadata.price = None
         metadata.currency = "USD"
         metadata.authoring_metadata = {"private_note": "Do not publish"}

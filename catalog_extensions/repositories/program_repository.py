@@ -50,7 +50,10 @@ class ProgramRepository:
         queryset = self._base_queryset()
 
         if public_only:
-            queryset = queryset.filter(cba_catalog__catalog_visibility="public")
+            queryset = queryset.filter(
+                cba_catalog__catalog_visibility="public",
+                cba_catalog__publication_ready=True,
+            )
 
         filters = filters or {}
 
@@ -100,5 +103,8 @@ class ProgramRepository:
     def get_by_uuid(self, uuid, public_only=True):
         queryset = self._base_queryset().filter(uuid=uuid)
         if public_only:
-            queryset = queryset.filter(cba_catalog__catalog_visibility="public")
+            queryset = queryset.filter(
+                cba_catalog__catalog_visibility="public",
+                cba_catalog__publication_ready=True,
+            )
         return queryset.first()
