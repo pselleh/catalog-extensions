@@ -153,7 +153,13 @@ class Command(BaseCommand):
         if not isinstance(payload, dict):
             return ["The top-level JSON value must be an object."]
 
-        sidecars = payload.get("sidecars", {})
+        if (
+            "sidecar" in payload
+            and "sidecars" in payload
+            and payload["sidecar"] != payload["sidecars"]
+        ):
+            return ["sidecar and sidecars must match when both are supplied."]
+        sidecars = payload.get("sidecar", payload.get("sidecars", {}))
         if not isinstance(sidecars, dict):
             return ["sidecars must be an object keyed by course key."]
         if any(
