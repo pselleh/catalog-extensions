@@ -12,7 +12,8 @@ from catalog_extensions.services.program_service import ProgramService
 
 def _matches_listing(program, request):
     organization = get_catalog_organization(request)
-    if not organization:
+    site = (request.query_params.get("site") or "").strip()
+    if not organization and not site:
         return True
     try:
         metadata = program.cba_catalog
@@ -20,9 +21,13 @@ def _matches_listing(program, request):
         return False
     if metadata is None:
         return False
-    return organization in {
-        item.key for item in metadata.listing_organizations.all()
-    }
+    if site and site not in (getattr(metadata, "site_keys", None) or []):
+        return False
+    if organization:
+        return organization in {
+            item.key for item in metadata.listing_organizations.all()
+        }
+    return True
 
 
 class ProgramListView(APIView):
@@ -31,6 +36,7 @@ class ProgramListView(APIView):
     def get(self, request):
         filters = {
             "organization": get_catalog_organization(request),
+            "site": (request.query_params.get("site") or "").strip(),
             "title": request.query_params.get("title"),
             "uuid": request.query_params.get("uuid"),
             "program_code": request.query_params.get("program_code"),
@@ -93,6 +99,7 @@ class InternalProgramListView(ProgramListView):
     def get(self, request):
         filters = {
             "organization": get_catalog_organization(request),
+            "site": (request.query_params.get("site") or "").strip(),
             "title": request.query_params.get("title"),
             "uuid": request.query_params.get("uuid"),
             "program_code": request.query_params.get("program_code"),

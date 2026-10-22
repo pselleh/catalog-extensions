@@ -62,6 +62,11 @@ class CourseRepository:
         # category from being satisfied by different runs.
         course_run_filters = {}
 
+        if filters.get("site"):
+            course_run_filters[
+                "course_runs__cba_catalog__site_keys__contains"
+            ] = [filters["site"]]
+
         if filters.get("organization"):
             course_run_filters[
                 "course_runs__cba_catalog__listing_organizations__key"

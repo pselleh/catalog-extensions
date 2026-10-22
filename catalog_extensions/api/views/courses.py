@@ -18,6 +18,7 @@ class CourseListView(APIView):
     def get(self, request):
         filters = {
             "organization": get_catalog_organization(request),
+            "site": (request.query_params.get("site") or "").strip(),
             "subject": request.query_params.get("subject"),
             "title": request.query_params.get("title"),
             "uuid": request.query_params.get("uuid"),
@@ -85,6 +86,7 @@ class InternalCourseListView(CourseListView):
     def get(self, request):
         filters = {
             "organization": get_catalog_organization(request),
+            "site": (request.query_params.get("site") or "").strip(),
             "subject": request.query_params.get("subject"),
             "title": request.query_params.get("title"),
             "uuid": request.query_params.get("uuid"),

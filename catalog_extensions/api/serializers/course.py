@@ -243,6 +243,10 @@ class CourseListSerializer(serializers.Serializer):
         organization = (
             get_catalog_organization(request) if request is not None else None
         )
+        site = (
+            (request.query_params.get("site") or "").strip()
+            if request is not None else ""
+        )
         exact_key = self.context.get("course_key")
         public_only = self.context.get("public_only", True)
         result = []
@@ -253,6 +257,8 @@ class CourseListSerializer(serializers.Serializer):
                     continue
             metadata = _catalog_metadata(run)
             if metadata is None:
+                continue
+            if site and site not in (getattr(metadata, "site_keys", None) or []):
                 continue
             if public_only and metadata.catalog_visibility != "public":
                 continue

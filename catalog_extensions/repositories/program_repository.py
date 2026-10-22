@@ -54,6 +54,11 @@ class ProgramRepository:
 
         filters = filters or {}
 
+        if filters.get("site"):
+            queryset = queryset.filter(
+                cba_catalog__site_keys__contains=[filters["site"]]
+            )
+
         if filters.get("organization"):
             queryset = queryset.filter(
                 cba_catalog__listing_organizations__key=filters["organization"]
