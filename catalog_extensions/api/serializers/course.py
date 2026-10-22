@@ -2,6 +2,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from opaque_keys.edx.keys import CourseKey
 from rest_framework import serializers
 
+from catalog_extensions.api.query_params import get_catalog_organization
 from catalog_extensions.api.serializers.organization import OrganizationSerializer
 from catalog_extensions.api.serializers.subject import SubjectSerializer
 
@@ -213,8 +214,49 @@ class CourseListSerializer(serializers.Serializer):
     organizations = OrganizationSerializer(source="authoring_organizations", many=True, read_only=True)
     subjects = SubjectSerializer(many=True, read_only=True)
 
+    def _runs(self, obj):
+        request = self.context.get("request")
+        params = request.query_params if request is not None else {}
+        organization = (
+            get_catalog_organization(request) if request is not None else None
+        )
+        exact_key = self.context.get("course_key")
+        public_only = self.context.get("public_only", True)
+        result = []
+
+        for run in obj.course_runs.all():
+            if exact_key and str(exact_key).startswith("course-v1:"):
+                if str(run.key) != str(exact_key):
+                    continue
+            metadata = _catalog_metadata(run)
+            if metadata is None:
+                continue
+            if public_only and metadata.catalog_visibility != "public":
+                continue
+            if organization:
+                listings = getattr(metadata, "listing_organizations", None)
+                if listings is None or organization not in {
+                    item.key for item in listings.all()
+                }:
+                    continue
+            if params.get("catalog_status"):
+                if metadata.catalog_status != params["catalog_status"]:
+                    continue
+            if params.get("catalog_category"):
+                if params["catalog_category"] not in _catalog_category_keys(metadata):
+                    continue
+            result.append(run)
+        return result
+
     def _run(self, obj):
-        return _catalog_run(obj)
+        runs = self._runs(obj)
+        for name in ("advertised_course_run", "canonical_course_run"):
+            preferred = getattr(obj, name, None)
+            if preferred is not None:
+                for run in runs:
+                    if str(run.key) == str(preferred.key):
+                        return run
+        return runs[0] if runs else None
 
     def get_course_key(self, obj):
         run = self._run(obj)
@@ -291,7 +333,12 @@ class CourseDetailSerializer(CourseListSerializer):
     faculty = serializers.SerializerMethodField()
     created = serializers.DateTimeField(read_only=True)
     modified = serializers.DateTimeField(read_only=True)
-    course_runs = CourseRunSerializer(many=True, read_only=True)
+    course_runs = serializers.SerializerMethodField()
+
+    def get_course_runs(self, obj):
+        return CourseRunSerializer(
+            self._runs(obj), many=True, context=self.context
+        ).data
 
     def get_learning_outcomes(self, obj):
         metadata = _catalog_metadata(self._run(obj))

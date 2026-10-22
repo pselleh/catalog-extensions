@@ -42,13 +42,6 @@ class CourseRepository:
         queryset = self._base_queryset()
         filters = filters or {}
 
-        if filters.get("organization"):
-            queryset = queryset.filter(
-                authoring_organizations__key=(
-                    filters["organization"]
-                )
-            )
-
         if filters.get("subject"):
             queryset = queryset.filter(
                 subjects__slug=filters["subject"]
@@ -68,6 +61,11 @@ class CourseRepository:
         # filter call. This prevents visibility, status, and
         # category from being satisfied by different runs.
         course_run_filters = {}
+
+        if filters.get("organization"):
+            course_run_filters[
+                "course_runs__cba_catalog__listing_organizations__key"
+            ] = filters["organization"]
 
         if public_only:
             course_run_filters[

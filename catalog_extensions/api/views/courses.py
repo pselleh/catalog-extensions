@@ -40,6 +40,7 @@ class CourseListView(APIView):
         serializer = CourseListSerializer(
             page,
             many=True,
+            context={"request": request, "public_only": True},
         )
 
         return paginator.get_paginated_response(
@@ -55,7 +56,9 @@ class CourseDetailView(APIView):
 
         course = service.get_course(course_key)
 
-        if not course:
+        if not course or not CourseDetailSerializer(context={
+            "request": request, "public_only": True, "course_key": course_key,
+        })._runs(course):
             return Response(
                 {
                     "code": "COURSE_NOT_FOUND",
@@ -64,7 +67,12 @@ class CourseDetailView(APIView):
                 status=404,
             )
 
-        serializer = CourseDetailSerializer(course)
+        serializer = CourseDetailSerializer(
+            course, context={
+                "request": request, "public_only": True,
+                "course_key": course_key,
+            },
+        )
 
         return Response(serializer.data)
 
@@ -86,7 +94,10 @@ class InternalCourseListView(CourseListView):
         queryset = CourseService().list_courses(filters=filters, public_only=False)
         paginator = CBAPagination()
         page = paginator.paginate_queryset(queryset, request, view=self)
-        return paginator.get_paginated_response(CourseListSerializer(page, many=True).data)
+        return paginator.get_paginated_response(CourseListSerializer(
+            page, many=True,
+            context={"request": request, "public_only": False},
+        ).data)
 
 
 class InternalCourseDetailView(CourseDetailView):
@@ -94,9 +105,16 @@ class InternalCourseDetailView(CourseDetailView):
 
     def get(self, request, course_key):
         course = CourseService().get_course(course_key, public_only=False)
-        if not course:
+        if not course or not CourseDetailSerializer(context={
+            "request": request, "public_only": False, "course_key": course_key,
+        })._runs(course):
             return Response(
                 {"code": "COURSE_NOT_FOUND", "message": "Course does not exist."},
                 status=404,
             )
-        return Response(CourseDetailSerializer(course).data)
+        return Response(CourseDetailSerializer(
+            course, context={
+                "request": request, "public_only": False,
+                "course_key": course_key,
+            },
+        ).data)

@@ -56,7 +56,7 @@ class ProgramRepository:
 
         if filters.get("organization"):
             queryset = queryset.filter(
-                authoring_organizations__key=filters["organization"]
+                cba_catalog__listing_organizations__key=filters["organization"]
             )
 
         if filters.get("title"):
