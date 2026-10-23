@@ -4,11 +4,12 @@ from rest_framework import serializers
 
 from catalog_extensions.models.course import MicrocourseCatalogMetadata
 from catalog_extensions.models.program import CertificateProgramCatalogMetadata
+from catalog_extensions.services.credit_contract import credit_summary
 
 
 COMMON_DISPLAY_FIELDS = tuple("""
 owning_organization listing_organizations site_keys publication_ready
-content_version updated_at price currency
+content_version updated_at price currency learning_credits
 """.split())
 
 COURSE_DISPLAY_FIELDS = tuple("""
@@ -26,7 +27,15 @@ award_title standards_alignment sample_work_url enrollment_url waitlist_url
 """.split())
 
 
-class CourseDisplayMetadataSerializer(serializers.ModelSerializer):
+class CreditDisplaySerializer(serializers.ModelSerializer):
+    learning_credits = serializers.SerializerMethodField()
+
+    def get_learning_credits(self, obj):
+        return credit_summary(getattr(obj, "credit_plan", {}), self.credit_kind)
+
+
+class CourseDisplayMetadataSerializer(CreditDisplaySerializer):
+    credit_kind = "microcourse"
     owning_organization = serializers.SlugRelatedField(
         slug_field="key", read_only=True, allow_null=True,
     )
@@ -40,7 +49,8 @@ class CourseDisplayMetadataSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
-class ProgramDisplayMetadataSerializer(serializers.ModelSerializer):
+class ProgramDisplayMetadataSerializer(CreditDisplaySerializer):
+    credit_kind = "program"
     owning_organization = serializers.SlugRelatedField(
         slug_field="key", read_only=True, allow_null=True,
     )

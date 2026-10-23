@@ -3,6 +3,7 @@
 from copy import deepcopy
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
+from .credit_contract import normalize_credit_plan
 
 
 COMMON_FIELDS = """
@@ -72,6 +73,10 @@ def extended_metadata_defaults(record, kind, sidecar=None):
 
     # Missing approval must never retain an earlier true approval implicitly.
     values.setdefault("publication_ready", False)
+    sidecar_plan = sidecar.get("credit_plan", {}) if sidecar is not None else {}
+    if "credit_plan" in record and sidecar is not None and "credit_plan" in sidecar and record["credit_plan"] != sidecar_plan:
+        raise ValueError("Record and sidecar credit plans disagree.")
+    values["credit_plan"] = normalize_credit_plan(record.get("credit_plan", sidecar_plan), kind)
     if not isinstance(values["publication_ready"], bool):
         raise ValueError("publication_ready must be a boolean.")
 

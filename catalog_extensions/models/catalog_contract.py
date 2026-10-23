@@ -21,6 +21,7 @@ class CatalogContractMetadata(models.Model):
     content_version = models.CharField(max_length=128, blank=True)
     updated_at = models.DateTimeField(null=True, blank=True)
     authoring_metadata = models.JSONField(default=dict, blank=True)
+    credit_plan = models.JSONField(default=dict, blank=True)
 
     class Meta:
         abstract = True

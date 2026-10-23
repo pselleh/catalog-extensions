@@ -102,6 +102,7 @@ class CertificateProgramCatalogMetadata(CatalogContractMetadata):
     class Meta:
         verbose_name = "CBA certificate program catalog metadata"
         verbose_name_plural = "CBA certificate program catalog metadata"
+        permissions = [("approve_program_credit_plan", "Can approve certificate program credit plans")]
 
     def __str__(self):
         return f"{self.program_code}: {self.program.title}"
